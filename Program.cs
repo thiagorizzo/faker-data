@@ -135,56 +135,62 @@ namespace FakerData
                 var codItensPedido = 0;
                 for (i = 0; i < 100; i++)
                 {
-                    var fakerPedido = new Faker<Pedido>("pt_BR")
-                        .StrictMode(true)
-                        .RuleFor(o => o.CodPedido, f => codPedido++)
-                        .RuleFor(o => o.CodCliente, f => f.PickRandom(dataCliente.Select(d => d.CodCliente)))
-                        .RuleFor(o => o.Total, f => (double)f.Finance.Amount(1, 1000))
-                        .RuleFor(o => o.DataPedido, f => f.Date.Recent())
-                        .RuleFor(o => o.Cancelado, f => f.PickRandom(cancelado));
-
-                    var dataPedido = fakerPedido.Generate(50000);
-                    Console.WriteLine("Pedidos criados.\n");
-
-                    var fakerItensPedido = new Faker<ItemPedido>("pt_BR")
-                                            .StrictMode(true)
-                                            .RuleFor(o => o.CodItemPedido, f => codItensPedido++)
-                                            .RuleFor(o => o.CodPedido, f => f.PickRandom(dataPedido.Select(d => d.CodPedido)))
-                                            .RuleFor(o => o.ValorCobrado, f => (double)f.Finance.Amount(1, 1000))
-                                            .RuleFor(o => o.Quantidade, f => f.Random.Int(1, 10))
-                                            .RuleFor(o => o.CodProduto, f => f.PickRandom(dataProduto.Select(d => d.CodProduto)));
-
-                    var dataItensPedido = fakerItensPedido.Generate(50000);
-                    Console.WriteLine("Itens pedidos criados.\n");
-
-                    foreach (var pedido in dataPedido)
+                    using (var transaction = connection.BeginTransaction())
                     {
-                        SqlCommand command = new SqlCommand($"INSERT INTO Pedido (CodPedido, CodCliente, Total, DataPedido, Cancelado) VALUES (@CodPedido, @CodCliente, @Total, @DataPedido, @Cancelado)", connection);
-                        command.Parameters.AddWithValue("CodPedido", pedido.CodPedido);
-                        command.Parameters.AddWithValue("CodCliente", pedido.CodCliente);
-                        command.Parameters.AddWithValue("Total", pedido.Total);
-                        command.Parameters.AddWithValue("DataPedido", pedido.DataPedido);
-                        command.Parameters.AddWithValue("Cancelado", pedido.Cancelado);
-                        command.ExecuteNonQuery();
-                    }
-                    Console.WriteLine($"Insert pedidos feitos. Pedido atual: {codPedido}.\n");
+                        var fakerPedido = new Faker<Pedido>("pt_BR")
+                            .StrictMode(true)
+                            .RuleFor(o => o.CodPedido, f => codPedido++)
+                            .RuleFor(o => o.CodCliente, f => f.PickRandom(dataCliente.Select(d => d.CodCliente)))
+                            .RuleFor(o => o.Total, f => (double)f.Finance.Amount(1, 1000))
+                            .RuleFor(o => o.DataPedido, f => f.Date.Recent())
+                            .RuleFor(o => o.Cancelado, f => f.PickRandom(cancelado));
 
-                    foreach (var itemPedido in dataItensPedido)
-                    {
-                        SqlCommand command = new SqlCommand($"INSERT INTO ItensPedido (CodItemPedido, CodPedido, Quantidade, ValorCobrado, CodProduto) VALUES (@CodItemPedido, @CodPedido, @Quantidade, @ValorCobrado, @CodProduto)", connection);
-                        command.Parameters.AddWithValue("CodItemPedido", itemPedido.CodItemPedido);
-                        command.Parameters.AddWithValue("CodPedido", itemPedido.CodPedido);
-                        command.Parameters.AddWithValue("Quantidade", itemPedido.Quantidade);
-                        command.Parameters.AddWithValue("ValorCobrado", itemPedido.ValorCobrado);
-                        command.Parameters.AddWithValue("CodProduto", itemPedido.CodProduto);
-                        command.ExecuteNonQuery();
+                        var dataPedido = fakerPedido.Generate(50000);
+                        Console.WriteLine("Pedidos criados.\n");
+
+                        var fakerItensPedido = new Faker<ItemPedido>("pt_BR")
+                                                .StrictMode(true)
+                                                .RuleFor(o => o.CodItemPedido, f => codItensPedido++)
+                                                .RuleFor(o => o.CodPedido, f => f.PickRandom(dataPedido.Select(d => d.CodPedido)))
+                                                .RuleFor(o => o.ValorCobrado, f => (double)f.Finance.Amount(1, 1000))
+                                                .RuleFor(o => o.Quantidade, f => f.Random.Int(1, 10))
+                                                .RuleFor(o => o.CodProduto, f => f.PickRandom(dataProduto.Select(d => d.CodProduto)));
+
+                        var dataItensPedido = fakerItensPedido.Generate(50000);
+                        Console.WriteLine("Itens pedidos criados.\n");
+
+                        foreach (var pedido in dataPedido)
+                        {
+                            SqlCommand command = new SqlCommand($"INSERT INTO Pedido (CodPedido, CodCliente, Total, DataPedido, Cancelado) VALUES (@CodPedido, @CodCliente, @Total, @DataPedido, @Cancelado)", connection, transaction);
+                            command.Parameters.AddWithValue("CodPedido", pedido.CodPedido);
+                            command.Parameters.AddWithValue("CodCliente", pedido.CodCliente);
+                            command.Parameters.AddWithValue("Total", pedido.Total);
+                            command.Parameters.AddWithValue("DataPedido", pedido.DataPedido);
+                            command.Parameters.AddWithValue("Cancelado", pedido.Cancelado);
+                            command.ExecuteNonQuery();
+                        }
+                        Console.WriteLine($"Insert pedidos feitos. Pedido atual: {codPedido}.\n");
+
+                        foreach (var itemPedido in dataItensPedido)
+                        {
+                            SqlCommand command = new SqlCommand($"INSERT INTO ItensPedido (CodItemPedido, CodPedido, Quantidade, ValorCobrado, CodProduto) VALUES (@CodItemPedido, @CodPedido, @Quantidade, @ValorCobrado, @CodProduto)", connection, transaction);
+                            command.Parameters.AddWithValue("CodItemPedido", itemPedido.CodItemPedido);
+                            command.Parameters.AddWithValue("CodPedido", itemPedido.CodPedido);
+                            command.Parameters.AddWithValue("Quantidade", itemPedido.Quantidade);
+                            command.Parameters.AddWithValue("ValorCobrado", itemPedido.ValorCobrado);
+                            command.Parameters.AddWithValue("CodProduto", itemPedido.CodProduto);
+                            command.ExecuteNonQuery();
+                        }
+                        Console.WriteLine($"Insert itens de pedidos feitos. Itens Pedido atual: {codPedido}\n");
+
+                        transaction.Commit();
                     }
-                    Console.WriteLine($"Insert itens de pedidos feitos. Itens Pedido atual: {codPedido}\n");
                 }
             }
         }
     }
 }
+
 
 
 //CREATE DATABASE Performance;
